@@ -84,7 +84,7 @@ jobs:
 
     - name: Upload build artifacts (msi packages)
       if: ${{ github.event_name == 'push' }}
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: MSI Packages
         path: Packaging/Windows/Packages/**/*.msi
@@ -146,7 +146,7 @@ jobs:
 
     - name: Upload build artifacts (dmg package)
       if: ${{ github.event_name == 'push' }}
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
           name: DMG Package
           path: "*.dmg"
