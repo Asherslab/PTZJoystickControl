@@ -16,7 +16,7 @@ public static class ViscaCommandParser
 
         //byte socket = (byte)(buffer[startIndex] & 0x0F); // not used
         byte replyType = (byte)(buffer[startIndex++] & 0xF0);
-
+        
         switch (replyType)
         {
             case (byte)ReplyType.Ack:
@@ -50,5 +50,29 @@ public static class ViscaCommandParser
             throw new Exception("Invalid response. PowerInquiry not terminated.");
         }
         viscaDevice.PowerState = Enum.IsDefined(value) ? value : null;
+    }
+    
+    public static void ParsePanTiltInquiryReply(ViscaDeviceBase viscaDevice, byte[] buffer, int startIndex)
+    {
+        // Console.WriteLine($"Buffer: {buffer}");
+
+        if (buffer.Length - startIndex < 9) throw new ArgumentException("Expected min 8 bytes");
+        int y = buffer[startIndex++] + buffer[startIndex++] + buffer[startIndex++] + buffer[startIndex++];
+        int z = buffer[startIndex++] + buffer[startIndex++] + buffer[startIndex++] + buffer[startIndex++];
+
+        if (buffer[startIndex] != (byte)Terminator.Terminate)
+        {
+            throw new Exception("Invalid response. Pan Tilt inquiry not terminated.");
+        }
+        
+        Console.WriteLine($"Y: {y}, Z: {z}");
+        
+        // if (buffer.Length - startIndex < 2) throw new ArgumentException("Expected min 2 bytes");
+        // var value = (Power)buffer[startIndex++];
+        // if(buffer[startIndex++] != (byte)Terminator.Terminate) {
+        //     viscaDevice.PowerState = null;
+        //     throw new Exception("Invalid response. PowerInquiry not terminated.");
+        // }
+        // viscaDevice.PowerState = Enum.IsDefined(value) ? value : null;
     }
 }

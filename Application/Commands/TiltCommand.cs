@@ -20,7 +20,7 @@ public class TiltCommand : IDynamicCommand
         new CommandDirectionOption("Down", Direction.Low),
     };
 
-    public override int MaxValue => 20; //Max tilt speed
+    public override int MaxValue => 24; //Max tilt speed
     public override int MinValue => 1;
 
     public override void Execute(int value, Direction direction)

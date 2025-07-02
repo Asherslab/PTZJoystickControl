@@ -7,12 +7,14 @@ using SDL2;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using PtzJoystickControl.Application.Commands;
 
 namespace PtzJoystickControl.SdlGamepads.Devices;
 
 public class SdlGamepad : IGamepad
 {
-    private static readonly string[] AxisNames = new string[] {
+    private static readonly string[] AxisNames = new string[]
+    {
         "Axis X",
         "Axis Y",
         "Axis Z",
@@ -22,35 +24,40 @@ public class SdlGamepad : IGamepad
         "Axis 4",
         "Axis 5",
     };
-    private const string buttonNameFormatString = "Button {0}";
-    private List<ICommand> commands;
-    private bool isActivated;
-    private bool isConnected;
 
-    public string Id { get; }
-    public string Name { get; }
+    private const string         buttonNameFormatString = "Button {0}";
+    private       List<ICommand> commands;
+    private       bool           isActivated;
+    private       bool           isConnected;
+
+    public   string Id   { get; }
+    public   string Name { get; }
     internal IntPtr sdlJoystickPointer;
-    internal int DeviceIndex { get; set; }
-    internal int InstanceId{ get; set; }
-    public bool DetectInput { get; set; } = false;
+    internal int    DeviceIndex { get; set; }
+    internal int    InstanceId  { get; set; }
+    public   bool   DetectInput { get; set; } = false;
 
-    private readonly Dictionary<string, IInput> inputs = new();
-    private ViscaDeviceBase? selectedCamera;
-    private ObservableCollection<ViscaDeviceBase>? cameras;
+    private readonly Dictionary<string, IInput>             inputs = new();
+    private          ViscaDeviceBase?                       selectedCamera;
+    private          ObservableCollection<ViscaDeviceBase>? cameras;
 
-    public bool IsActivated { 
+    public bool IsActivated
+    {
         get => isActivated;
-        set {
+        set
+        {
             if (isActivated != value)
             {
                 isActivated = value;
                 NotifyPersistentPropertyChanged();
             }
+
             NotifyPropertyChanged();
         }
     }
 
-    public bool IsConnected { 
+    public bool IsConnected
+    {
         get => isConnected;
         set
         {
@@ -87,7 +94,11 @@ public class SdlGamepad : IGamepad
 
     public IEnumerable<IInput> Inputs => inputs.Values;
 
-    internal SdlGamepad(SdlGamepadInfo gamepadInfo, ICommandsService commandsService, ObservableCollection<ViscaDeviceBase> cameras)
+    internal SdlGamepad(
+        SdlGamepadInfo                        gamepadInfo,
+        ICommandsService                      commandsService,
+        ObservableCollection<ViscaDeviceBase> cameras
+    )
     {
         Name = gamepadInfo.Name;
         Cameras = cameras;
@@ -98,7 +109,7 @@ public class SdlGamepad : IGamepad
         DeviceIndex = gamepadInfo.DeviceIndex;
         InstanceId = gamepadInfo.InstanceId;
         sdlJoystickPointer = SDL.SDL_JoystickOpen(DeviceIndex);
-        
+
         if (sdlJoystickPointer == IntPtr.Zero)
             throw new Exception("Failed to open joystick");
 
@@ -115,8 +126,8 @@ public class SdlGamepad : IGamepad
         var numButtons = SDL.SDL_JoystickNumButtons(sdlJoystickPointer);
         for (int i = 0; i < numButtons; i++)
         {
-            var name = string.Format(buttonNameFormatString, i + 1);
-            var id = string.Format(buttonNameFormatString, i);
+            var    name     = string.Format(buttonNameFormatString, i + 1);
+            var    id       = string.Format(buttonNameFormatString, i);
             IInput newInput = new Input(name, id, InputType.Button, commands.AsReadOnly());
             newInput.PersistentPropertyChanged += (sender, e) => NotifyPersistentPropertyChanged("");
             inputs.Add(id, newInput);
@@ -155,12 +166,14 @@ public class SdlGamepad : IGamepad
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+
     private void NotifyPropertyChanged([CallerMemberName] string propertyName = "")
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
     public event PropertyChangedEventHandler? PersistentPropertyChanged;
+
     private void NotifyPersistentPropertyChanged([CallerMemberName] string propertyName = "")
     {
         PersistentPropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
@@ -169,12 +182,51 @@ public class SdlGamepad : IGamepad
     internal void OnButtonEvent(SDL.SDL_JoyButtonEvent jbutton)
     {
         if (inputs.TryGetValue(string.Format(buttonNameFormatString, jbutton.button), out var input))
+        {
+            if (inputs.Any(x =>
+                    x.Value.SelectedCommand is InputEnablerCommand && x.Value.CommandValue?.Name == input.Id))
+            {
+                InputEnablerCommand? inputEnablerCommand =
+                    (InputEnablerCommand?)commands.FirstOrDefault(x => x is InputEnablerCommand);
+
+                if (inputEnablerCommand != null)
+                {
+                    bool enabled = inputEnablerCommand.EnabledInputs[input.Id];
+
+                    if (!enabled)
+                        return;
+                }
+            }
+
             input.InputValue = jbutton.state;
+        }
     }
 
     internal void OnAxisEvent(SDL.SDL_JoyAxisEvent jaxis)
     {
         if (inputs.TryGetValue(AxisNames[jaxis.axis], out var input))
+        {
+            InputEnablerCommand? inputEnablerCommand =
+                (InputEnablerCommand?)commands.FirstOrDefault(x => x is InputEnablerCommand);
+
+            if (inputEnablerCommand != null &&
+                inputEnablerCommand.EnabledInputs?.TryGetValue(input.Id, out bool enabled) == true &&
+                !enabled)
+            {
+                if (inputs.Any(x =>
+                        x.Value.SelectedCommand is InputEnablerCommand &&
+                        x.Value.CommandValue?.Name == input.Id
+                    )
+                   )
+                {
+                    if (input.InputValue != 0)
+                        input.InputValue = 0;
+                    
+                    return;
+                }
+            }
+
             input.InputValue = Util.Map(jaxis.axisValue, short.MinValue, short.MaxValue, -1, 1);
+        }
     }
 }
