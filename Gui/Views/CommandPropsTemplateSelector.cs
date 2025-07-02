@@ -6,6 +6,7 @@ using PtzJoystickControl.Core.Devices;
 using PtzJoystickControl.Gui.ViewModels;
 using System.Collections.Generic;
 using System.ComponentModel;
+using PtzJoystickControl.Application.Commands;
 
 namespace PtzJoystickControl.Gui.Views;
 
@@ -39,6 +40,9 @@ public class CommandPropsTemplateSelector : IDataTemplate
 
                 else if (inputViewModel.SelectedCommand is IStaticCommand)
                     returnTemplate = Templates["ButtonWithStaticCommand"];
+                
+                else if (inputViewModel.SelectedCommand is InputEnablerCommand)
+                    returnTemplate = Templates["ButtonWithInputEnablerCommand"];
             }
         }
         else

@@ -298,6 +298,26 @@ public class Input : IInput
 
             if (executeCommand) statCommand.Execute(commandValue!);
         }
+        else if (command is InputEnablerCommand inputEnablerCommand)
+        {
+            bool executeCommand = false;
+            
+            if (InputType == InputType.Button)
+            {
+                if (buttonPressed && inputValue == 0)
+                {
+                    buttonPressed = false;
+                    executeCommand = true;
+                }
+                else if (!buttonPressed && inputValue != 0)
+                {
+                    buttonPressed = true;
+                    executeCommand = true;
+                }
+            }
+
+            if (executeCommand) inputEnablerCommand.Execute(commandValue!, buttonPressed);
+        }
     }
 
     public event PropertyChangedEventHandler? PersistentPropertyChanged;

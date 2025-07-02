@@ -93,6 +93,19 @@
 							</ComboBox>
 						</Grid>
 					</DataTemplate>
+					
+					<DataTemplate x:Key="ButtonWithInputEnablerCommand">
+						<Grid ColumnDefinitions="110,3,140,15,70,3,140,*">
+							<TextBlock Text="{Binding SelectedCommand.ButtonParameterName}" Grid.Column="0" VerticalAlignment="Center"/>
+							<ComboBox Items="{Binding Values}" SelectedItem="{Binding CommandValue}" Grid.Column="2" HorizontalAlignment="Stretch">
+								<ComboBox.ItemTemplate>
+									<DataTemplate>
+										<TextBlock Text="{Binding Name}"></TextBlock>
+									</DataTemplate>
+								</ComboBox.ItemTemplate>
+							</ComboBox>
+						</Grid>
+					</DataTemplate>
 
 					<DataTemplate x:Key="NoCommandSelected">
 						<Grid>

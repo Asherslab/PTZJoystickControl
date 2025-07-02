@@ -20,7 +20,8 @@ public class CommandsService : ICommandsService
             new PresetCommand(gamepad),
             new PresetRecallSpeedComamnd(gamepad),
             new SelectCameraCommand(gamepad),
-            new PowerCommand(gamepad)
+            new PowerCommand(gamepad),
+            new InputEnablerCommand(gamepad)
         };
     }
 }

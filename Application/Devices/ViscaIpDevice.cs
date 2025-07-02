@@ -17,6 +17,8 @@ public class ViscaIpDevice : ViscaIPDeviceBase
     ushort tmpBuffIndex = 0;
     private uint packetId = 0;
 
+    public int CommandsYetToSend => commandsToSend.Count;
+    
     public ViscaIpDevice(string name) : this(name, null) { }
 
     public ViscaIpDevice(string name, IPEndPoint? viscaEndpint) : base(name, viscaEndpint) { }
@@ -125,6 +127,11 @@ public class ViscaIpDevice : ViscaIPDeviceBase
     {
         powerCmd = (byte)power;
         AddCommand(AddPowerCommand);
+    }
+
+    public void QueryTest()
+    {
+        AddCommand(AddTestQueryCommand);
     }
 
     public override void Pan(byte panSpeed, PanDir panDir)
@@ -247,6 +254,18 @@ public class ViscaIpDevice : ViscaIPDeviceBase
         tmpBuffer[tmpBuffIndex++] = (byte)InquiryType.Power;
         tmpBuffer[tmpBuffIndex++] = (byte)Terminator.Terminate;
         InquiryReplyParser = ViscaCommandParser.ParsePowerInquiryReply;
+        return ViscaIPHeaderType.Inquery;
+    }
+
+    private ViscaIPHeaderType AddTestQueryCommand()
+    {
+        // 81 09 7e 7e 15 FF
+        tmpBuffer[tmpBuffIndex++] = 0x81;
+        tmpBuffer[tmpBuffIndex++] = (byte)PacketType.Inquiry;
+        tmpBuffer[tmpBuffIndex++] = 0x06;
+        tmpBuffer[tmpBuffIndex++] = 0x12;
+        tmpBuffer[tmpBuffIndex++] = (byte)Terminator.Terminate;
+        InquiryReplyParser = ViscaCommandParser.ParsePanTiltInquiryReply;
         return ViscaIPHeaderType.Inquery;
     }
 
