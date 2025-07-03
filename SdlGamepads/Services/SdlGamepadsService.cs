@@ -84,6 +84,9 @@ public class SdlGamepadsService : IGamepadsService
     {
         var gamepad = new SdlGamepad(gamepadInfo, _commandsService, _camerasService.Cameras);
 
+        if (_camerasService.Cameras.Count > 0)
+            gamepad.SelectedCamera = _camerasService.Cameras.First();
+        
         GamepadSettings? gamepadSettings = _gamppadSettingsDb.GetGamepadSettingsById(gamepadInfo.Id);
         if (gamepadSettings == null)
             return gamepad;

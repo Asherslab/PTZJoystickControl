@@ -31,6 +31,7 @@ public class ViscaIpDevice : ViscaIPDeviceBase
             {
                 socket = UdpSocket.GetInstance();
                 UdpSocket.AddListenerCallback(ViscaIpEndpont, ParseViscaIPReply);
+                QueryTest();
                 return;
             }
             socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
