@@ -20,20 +20,41 @@ jobs:
         
       - name: Bump version
         if: ${{ github.event_name == 'push' && github.run_attempt == 1 }}
-        uses: SiqiLu/dotnet-bump-version@2.0.0
-        with:
-          version_files: "Gui/Gui.csproj"
-          version_mask: 0.0.1.0
-          version_overwrite: "*.*.*.${{ github.run_number }}"
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Extract current version and increment revision
+          current_version=$(grep -oP '<Version>\K(.*)(?=</Version>)' Gui/Gui.csproj)
+          echo "Current version: $current_version"
+          
+          # Split version and increment revision (last number)
+          IFS='.' read -ra VERSION_PARTS <<< "$current_version"
+          major=${VERSION_PARTS[0]}
+          minor=${VERSION_PARTS[1]}
+          build=${VERSION_PARTS[2]}
+          revision=${VERSION_PARTS[3]}
+          
+          # Increment revision
+          new_revision=$((revision + 1))
+          new_version="$major.$minor.$build.$new_revision"
+          
+          echo "New version: $new_version"
+          
+          # Update the version in csproj
+          sed -i "s|<Version>$current_version</Version>|<Version>$new_version</Version>|g" Gui/Gui.csproj
+          
+          # Commit and tag
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add Gui/Gui.csproj
+          git commit -m "Bump version to $new_version"
+          git tag "v$new_version"
+          git push
+          git push --tags
 
-      - name: Tag version in git and set as output
+      - name: Get version and set as output
         id: version-select
         run: |
           version=$(grep -oP '<Version>\K(.*)(?=\.\d+</Version>)' Gui/Gui.csproj)
           echo "Version: ${version}"
-          git tag v$version
-          git push --tags
           echo "VERSION=$version" >> $GITHUB_OUTPUT
 
   build-windows-packeges:
