@@ -17,7 +17,7 @@ namespace PtzJoystickControl.Application.Services
             _githubClient = githubClient;
             _owner = owner;
             _repository = repository;
-            this._currentVersion = currentVersion;
+            _currentVersion = currentVersion;
         }
 
         public async Task<Update> CheckForUpdate()
