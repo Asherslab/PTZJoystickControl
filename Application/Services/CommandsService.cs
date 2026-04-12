@@ -1,4 +1,4 @@
-﻿using PtzJoystickControl.Application.Commands;
+using PtzJoystickControl.Application.Commands;
 using PtzJoystickControl.Core.Commands;
 using PtzJoystickControl.Core.Devices;
 using PtzJoystickControl.Core.Services;
@@ -21,7 +21,8 @@ public class CommandsService : ICommandsService
             new PresetRecallSpeedComamnd(gamepad),
             new SelectCameraCommand(gamepad),
             new PowerCommand(gamepad),
-            new InputEnablerCommand(gamepad)
+            new InputEnablerCommand(gamepad),
+            new WirecastLivePreviewCommand(gamepad)
         };
     }
 }
