@@ -16,17 +16,14 @@ public class WirecastLivePreviewCommand : ICommand
     }
 
     private const string CommandNameString = "Wirecast Live/Preview Toggle";
-    public string CommandName => CommandNameString;
+    public        string CommandName => CommandNameString;
 
-    public string AxisParameterName => "Action";
+    public string AxisParameterName   => "Action";
     public string ButtonParameterName => "Action";
 
     public IEnumerable<CommandValueOption> Options
     {
-        get
-        {
-            yield return new CommandValueOption("Toggle Live/Preview", 0);
-        }
+        get { yield return new CommandValueOption("Toggle Live/Preview", 0); }
     }
 
     public void Execute(int value)
@@ -40,7 +37,7 @@ public class WirecastLivePreviewCommand : ICommand
         if (value != null)
             Execute(value.Value);
     }
-    
+
     private bool TryWirecastComAutomation()
     {
         try
@@ -55,8 +52,13 @@ public class WirecastLivePreviewCommand : ICommand
             if (document == null)
                 return false;
 
-            // Call the "Go" method on the document to trigger live/preview switch
-            InvokeMethod(document, "Go");
+            // Get the "normal" layer (layer 3) where shots are typically located
+            object? layer = InvokeMethod(document, "LayerByName", "normal");
+            if (layer == null)
+                return false;
+
+            // Call the "Go" method on the layer to trigger live/preview switch
+            InvokeMethod(layer, "Go");
 
             return true;
         }
@@ -70,25 +72,13 @@ public class WirecastLivePreviewCommand : ICommand
     {
         try
         {
-            // Try to get the running Wirecast instance
-            return Marshal2.GetActiveObject("Wirecast.Application");
+            // Try to get the running Wirecast instance (Gameshow.Application is the newer ProgID)
+            return Marshal2.GetActiveObject("Gameshow.Application");
         }
         catch
         {
-            try
-            {
-                // If Wirecast isn't running, try to start it
-                Type? wirecastType = Type.GetTypeFromProgID("Wirecast.Application");
-                if (wirecastType != null)
-                {
-                    return Activator.CreateInstance(wirecastType);
-                }
-            }
-            catch
-            {
-                // Wirecast not available
-            }
-            return null;
+            // Fallback to the older ProgID
+            return Marshal2.GetActiveObject("Wirecast.Application");
         }
     }
 
