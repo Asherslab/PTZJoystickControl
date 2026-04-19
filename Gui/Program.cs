@@ -13,7 +13,6 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Threading;
 using Octokit;
 using System.Reflection;
 
@@ -21,7 +20,7 @@ namespace PtzJoystickControl.Gui;
 
 internal class Program
 {
-    //private static FileStream? f;
+    private static FileStream? logFile;
 
     // Initialization code. Don't use any Avalonia, third-party APIs or any
     // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
@@ -29,12 +28,16 @@ internal class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        string logDir;
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            Directory.CreateDirectory(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".PTZJoystickControl/"));
+            logDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".PTZJoystickControl/");
         else
-            Directory.CreateDirectory(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PTZJoystickControl/"));
-        //f = File.OpenWrite(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PTZJoystickControl/log.txt"));
-        //Trace.Listeners.Add(new TextWriterTraceListener(f));
+            logDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PTZJoystickControl/");
+
+        Directory.CreateDirectory(logDir);
+        string logPath = Path.Combine(logDir, "log.txt");
+        logFile = File.OpenWrite(logPath);
+        Trace.Listeners.Add(new TextWriterTraceListener(logFile));
         Debug.AutoFlush = true;
 
         var appBuilder = BuildAvaloniaApp();
