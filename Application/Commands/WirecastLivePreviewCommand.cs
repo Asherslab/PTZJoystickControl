@@ -13,8 +13,6 @@ namespace PtzJoystickControl.Application.Commands;
 // and IStaticCommand already handles press-edge detection.
 public class WirecastLivePreviewCommand : IStaticCommand
 {
-    // Wirecast has 5 master layers, indexed 1..5.
-    private const int LayerCount = 5;
     private const string ProgId = "Wirecast.Application";
 
     private int _running;
@@ -75,29 +73,18 @@ public class WirecastLivePreviewCommand : IStaticCommand
                 ?? throw new InvalidOperationException("No Wirecast document is open");
             Trace.WriteLine("[Wirecast] Got document 1");
 
-            // The UI's Go button takes every layer's preview shot live.
-            for (int i = 1; i <= LayerCount; i++)
+            // Go acts on the whole document (all layers), so call it once; calling it per layer
+            // made Wirecast switch back and forth several times.
+            object layer = Invoke(document, "LayerByIndex", 1)
+                ?? throw new InvalidOperationException("Layer 1 not found");
+            try
             {
-                object? layer = null;
-                try
-                {
-                    layer = Invoke(document, "LayerByIndex", i);
-                    if (layer == null)
-                    {
-                        Trace.WriteLine($"[Wirecast] Layer {i} not found");
-                        continue;
-                    }
-                    Invoke(layer, "Go");
-                    Trace.WriteLine($"[Wirecast] Go sent to layer {i}");
-                }
-                catch (Exception ex)
-                {
-                    Trace.WriteLine($"[Wirecast] Go on layer {i} failed: {Unwrap(ex)}");
-                }
-                finally
-                {
-                    if (layer != null) Marshal.FinalReleaseComObject(layer);
-                }
+                Invoke(layer, "Go");
+                Trace.WriteLine("[Wirecast] Go sent");
+            }
+            finally
+            {
+                Marshal.FinalReleaseComObject(layer);
             }
         }
         finally

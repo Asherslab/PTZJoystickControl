@@ -3,6 +3,7 @@ using PtzJoystickControl.Core.Devices;
 using System.Diagnostics;
 using PtzJoystickControl.Core.Db;
 using PtzJoystickControl.Core.Model;
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace PtzJoystickControl.Application.Db
@@ -37,7 +38,7 @@ namespace PtzJoystickControl.Application.Db
                     .Select(viscaDeviceSettings =>
                     {
                         var viscaDevice = (ViscaDeviceBase?)Activator.CreateInstance(
-                            Type.GetType(viscaDeviceSettings.IViscaDeveiceTypeAssemblyQualifiedName)!,
+                            ResolveType(viscaDeviceSettings.IViscaDeveiceTypeAssemblyQualifiedName),
                             viscaDeviceSettings.Name);
                         if (viscaDevice is ViscaIPDeviceBase viscaIPDevice)
                         {
@@ -54,10 +55,19 @@ namespace PtzJoystickControl.Application.Db
             }
             catch (Exception e)
             {
-                Debug.WriteLine(e);
+                Trace.WriteLine($"Failed to load cameras from {_cameratFilePath}: {e}");
                 return new List<ViscaIPDeviceBase>();
             }
         }
+
+        // The stored name includes the assembly version at save time, which no longer matches once the
+        // version changes; resolve by simple assembly name so saved cameras survive upgrades.
+        private static Type ResolveType(string assemblyQualifiedName) =>
+            Type.GetType(
+                assemblyQualifiedName,
+                assemblyName => Assembly.Load(new AssemblyName(assemblyName.Name!)),
+                null,
+                throwOnError: true)!;
 
         public bool SaveCameras(IEnumerable<ViscaDeviceBase> viscaDevices)
         {
@@ -70,7 +80,7 @@ namespace PtzJoystickControl.Application.Db
             }
             catch (Exception e)
             {
-                Debug.WriteLine(e);
+                Trace.WriteLine($"Failed to save cameras to {_cameratFilePath}: {e}");
                 return false;
             }
         }
