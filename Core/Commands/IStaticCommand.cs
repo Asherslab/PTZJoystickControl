@@ -19,7 +19,7 @@ namespace PtzJoystickControl.Core.Commands
         public abstract IEnumerable<CommandValueOption> Options { get; }
 
         public abstract void Execute(int value);
-        public void Execute(CommandValueOption value)
+        public virtual void Execute(CommandValueOption value)
         {
             if (value != null!)
                 Execute(value.Value);

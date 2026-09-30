@@ -22,6 +22,8 @@ internal class Program
 {
     private static FileStream? logFile;
 
+    public static string Version { get; } = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown";
+
     // Initialization code. Don't use any Avalonia, third-party APIs or any
     // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
     // yet and stuff might break.
@@ -36,9 +38,13 @@ internal class Program
 
         Directory.CreateDirectory(logDir);
         string logPath = Path.Combine(logDir, "log.txt");
-        logFile = File.OpenWrite(logPath);
+        // Truncate each run, and share so the log can be read while the app is running.
+        logFile = new FileStream(logPath, System.IO.FileMode.Create, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete);
         Trace.Listeners.Add(new TextWriterTraceListener(logFile));
-        Debug.AutoFlush = true;
+        // Debug.AutoFlush is a no-op on .NET Core; Trace.AutoFlush is what flushes the listeners.
+        Trace.AutoFlush = true;
+        Trace.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] PTZ Joystick Control {Version} starting");
+        AppDomain.CurrentDomain.UnhandledException += (_, e) => Trace.WriteLine($"Unhandled exception: {e.ExceptionObject}");
 
         var appBuilder = BuildAvaloniaApp();
 

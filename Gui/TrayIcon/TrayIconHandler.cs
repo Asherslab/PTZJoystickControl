@@ -27,7 +27,7 @@ namespace PtzJoystickControl.Gui.TrayIcon
             {
                 IsVisible = true,
                 Menu = buildNativeMenu(),
-                ToolTipText = "PTZ Joystick Control"
+                ToolTipText = $"PTZ Joystick Control v{Program.Version}"
             };
 
             _trayIcon.Clicked += (object? s , EventArgs e) => OnShowClicked?.Invoke(s, e);

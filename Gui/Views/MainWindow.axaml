@@ -27,7 +27,7 @@
 		
 		<StackPanel IsVisible="{Binding IsExtendedIntoWindowDecorations, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=Window}}" Height="30" Grid.Row="0" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="{Binding TitleHorizontalAlignment}">
 			<Image Source="/Assets/icon.ico" Height="22" HorizontalAlignment="Left" Margin="4"/>
-			<TextBlock Text="PTZ Joystick Control" VerticalAlignment="Center"/>
+			<TextBlock Text="{Binding Title, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=Window}}" VerticalAlignment="Center"/>
 		</StackPanel>
 		
 		<v:GamepadsView Grid.Column="0" Grid.Row="1" DataContext="{Binding GamepadsViewModel}"/>

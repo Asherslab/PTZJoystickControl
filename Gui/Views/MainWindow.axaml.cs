@@ -7,6 +7,7 @@ namespace PtzJoystickControl.Gui.Views
         public MainWindow()
         {
             InitializeComponent();
+            Title = $"PTZ Joystick Control v{Program.Version}";
 
             //var logWin = new LogWindow();
             //logWin.DataContext = new LogWindowViewModel();
