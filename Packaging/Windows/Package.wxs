@@ -7,6 +7,9 @@
 
 	<Package Name="PTZ Joystick Control" Manufacturer="AHL" Version="!(bind.FileVersion.MainExe)" UpgradeCode="$(var.UpgradeCode)">
 		<MajorUpgrade DowngradeErrorMessage="!(loc.DowngradeError)"  />
+		<!-- Always overwrite installed files. Only Gui carries the app version; the other assemblies keep a fixed
+		     (or lower) version, so default file-versioning rules left stale copies behind on upgrade. -->
+		<Property Id="REINSTALLMODE" Value="amus" />
 		<MediaTemplate EmbedCab="yes"/>
 		<Icon Id="icon.ico" SourceFile="../../Gui/Assets/icon.ico"/>
 		<Property Id="ARPPRODUCTICON" Value="icon.ico" />
