@@ -223,6 +223,7 @@ public class SdlGamepadsService : IGamepadsService
         ((SdlGamepadInfo)gamepadInfo).DeviceIndex = deviceIndex;
         ((SdlGamepadInfo)gamepadInfo).InstanceId = SDL.SDL_JoystickGetDeviceInstanceID(deviceIndex);
         gamepadInfo.IsConnected = true;
+        Trace.WriteLine($"Gamepad connected: {gamepadInfo.Name} ({gamepadInfo.Id}), activated: {gamepadInfo.IsActivated}");
         if (gamepadInfo.IsActivated)
             ActivateGamepad(gamepadInfo);
     }

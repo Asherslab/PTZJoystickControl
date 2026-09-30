@@ -12,6 +12,7 @@ using Splat;
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 using Octokit;
 using System.Reflection;
@@ -43,8 +44,9 @@ internal class Program
         Trace.Listeners.Add(new TextWriterTraceListener(logFile));
         // Debug.AutoFlush is a no-op on .NET Core; Trace.AutoFlush is what flushes the listeners.
         Trace.AutoFlush = true;
-        Trace.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] PTZ Joystick Control {Version} starting");
+        Trace.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] PTZ Joystick Control {Version} starting (PID {Environment.ProcessId})");
         AppDomain.CurrentDomain.UnhandledException += (_, e) => Trace.WriteLine($"Unhandled exception: {e.ExceptionObject}");
+        TaskScheduler.UnobservedTaskException += (_, e) => Trace.WriteLine($"Unobserved task exception: {e.Exception}");
 
         var appBuilder = BuildAvaloniaApp();
 
