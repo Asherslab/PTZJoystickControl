@@ -3,180 +3,95 @@ using PtzJoystickControl.Core.Devices;
 using PtzJoystickControl.Core.Model;
 using System.Diagnostics;
 using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace PtzJoystickControl.Application.Commands;
 
-public class WirecastLivePreviewCommand : ICommand
+// Presses Wirecast's "Go" button (preview -> live) via Wirecast's Windows COM automation interface.
+// Must derive from IStaticCommand: Input only dispatches to IStaticCommand / IDynamicCommand / InputEnablerCommand,
+// and IStaticCommand already handles press-edge detection.
+public class WirecastLivePreviewCommand : IStaticCommand
 {
-    private readonly IGamepad _gamepad;
-    private int _previousValue = 0;
+    // Wirecast has 5 master layers, indexed 1..5.
+    private const int LayerCount = 5;
 
-    public WirecastLivePreviewCommand(IGamepad gamepad)
+    private int _running;
+
+    public WirecastLivePreviewCommand(IGamepad gamepad) : base(gamepad)
     {
-        _gamepad = gamepad;
     }
 
-    private const string CommandNameString = "Wirecast Live/Preview Toggle";
-    public        string CommandName => CommandNameString;
+    public override string CommandName => "Wirecast Live/Preview Toggle";
 
-    public string AxisParameterName   => "Action";
-    public string ButtonParameterName => "Action";
+    public override string AxisParameterName => "Action";
 
-    public IEnumerable<CommandValueOption> Options
+    public override string ButtonParameterName => "Action";
+
+    public override IEnumerable<CommandValueOption> Options => optionsList;
+    private static readonly IEnumerable<CommandValueOption> optionsList = new CommandValueOption[]
     {
-        get { yield return new CommandValueOption("Toggle Live/Preview", 0); }
-    }
+        new CommandValueOption("Go (Preview to Live)", 0),
+    };
 
-    public void Execute(int value)
+    public override void Execute(int value)
     {
-        // Only trigger on button press (transition from 0 to non-zero)
-        if (_previousValue == 0 && value != 0)
+        if (!OperatingSystem.IsWindows())
         {
-            Debug.WriteLine($"[WirecastLivePreview] Button pressed, triggering COM automation");
-            // Use official Wirecast COM automation interface
-            _ = Task.Run(TryWirecastComAutomation);
+            Trace.WriteLine("[Wirecast] COM automation is only available on Windows");
+            return;
         }
 
-        _previousValue = value;
+        // Ignore presses while a previous Go is still being sent.
+        if (Interlocked.Exchange(ref _running, 1) == 1)
+            return;
+
+        // COM automation is most reliable from an STA thread.
+        var thread = new Thread(() =>
+        {
+            try { if (OperatingSystem.IsWindows()) Go(); }
+            catch (Exception ex) { Trace.WriteLine($"[Wirecast] Go failed: {ex}"); }
+            finally { Interlocked.Exchange(ref _running, 0); }
+        })
+        { IsBackground = true, Name = "Wirecast Go" };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
     }
 
-    public void Execute(CommandValueOption value)
+    [SupportedOSPlatform("windows")]
+    private static void Go()
     {
-        if (value != null)
-            Execute(value.Value);
-    }
-
-    private bool TryWirecastComAutomation()
-    {
+        object wirecast = Marshal2.GetActiveObject("Wirecast.Application");
+        object? document = null;
         try
         {
-            Debug.WriteLine("[WirecastLivePreview] Starting COM automation");
+            document = Invoke(wirecast, "DocumentByIndex", 1)
+                ?? throw new InvalidOperationException("No Wirecast document is open");
 
-            // Get the running Wirecast application via COM
-            object? wirecast = GetWirecastApplication();
-            if (wirecast == null)
+            // The UI's Go button takes every layer's preview shot live.
+            for (int i = 1; i <= LayerCount; i++)
             {
-                Debug.WriteLine("[WirecastLivePreview] Failed to get Wirecast application via COM");
-                return false;
-            }
-            Debug.WriteLine("[WirecastLivePreview] Successfully got Wirecast application");
-
-            // Get the active document (current project)
-            object? document = InvokeMethod(wirecast, "DocumentByIndex", 1);
-            if (document == null)
-            {
-                Debug.WriteLine("[WirecastLivePreview] Failed to get document by index 1");
-                return false;
-            }
-            Debug.WriteLine("[WirecastLivePreview] Successfully got document");
-
-            // Get the "normal" layer (layer 3) where shots are typically located
-            object? layer = InvokeMethod(document, "LayerByName", "normal");
-            if (layer == null)
-            {
-                Debug.WriteLine("[WirecastLivePreview] Failed to get layer by name 'normal'");
-                return false;
-            }
-            Debug.WriteLine("[WirecastLivePreview] Successfully got 'normal' layer");
-
-            // Get the preview shot ID
-            object? previewShotId = InvokeMethod(layer, "PreviewShotID");
-            if (previewShotId == null || !(previewShotId is int shotId) || shotId == 0)
-            {
-                Debug.WriteLine($"[WirecastLivePreview] Failed to get preview shot ID (got: {previewShotId})");
-                return false;
-            }
-            Debug.WriteLine($"[WirecastLivePreview] Got preview shot ID: {shotId}");
-
-            // Set the preview shot as the active shot (equivalent to clicking on it)
-            SetProperty(layer, "ActiveShotID", shotId);
-            Debug.WriteLine($"[WirecastLivePreview] Set ActiveShotID to {shotId}");
-
-            // Check if AutoLive is off - if so, we need to call Go to make it live
-            object? autoLiveValue = GetProperty(document, "AutoLive");
-            if (autoLiveValue is int autoLive && autoLive == 0)
-            {
-                Debug.WriteLine("[WirecastLivePreview] AutoLive is off, calling Go()");
-                InvokeMethod(layer, "Go");
-                Debug.WriteLine("[WirecastLivePreview] Go() called successfully");
-            }
-            else
-            {
-                Debug.WriteLine($"[WirecastLivePreview] AutoLive is on (value: {autoLiveValue}), Go() not needed");
+                object? layer = Invoke(document, "LayerByIndex", i);
+                if (layer == null) continue;
+                try
+                {
+                    Invoke(layer, "Go");
+                }
+                finally
+                {
+                    Marshal.FinalReleaseComObject(layer);
+                }
             }
 
-            Debug.WriteLine("[WirecastLivePreview] COM automation completed successfully");
-            return true;
+            Trace.WriteLine("[Wirecast] Go sent");
         }
-        catch (Exception ex)
+        finally
         {
-            Debug.WriteLine($"[WirecastLivePreview] Exception in COM automation: {ex.Message}");
-            return false;
+            if (document != null) Marshal.FinalReleaseComObject(document);
+            Marshal.FinalReleaseComObject(wirecast);
         }
     }
 
-    private static object? GetWirecastApplication()
-    {
-        try
-        {
-            // Try to get the running Wirecast instance (Gameshow.Application is the newer ProgID)
-            return Marshal2.GetActiveObject("Gameshow.Application");
-        }
-        catch
-        {
-            // Fallback to the older ProgID
-            return Marshal2.GetActiveObject("Wirecast.Application");
-        }
-    }
-
-    private static object? InvokeMethod(object obj, string methodName, params object[] parameters)
-    {
-        try
-        {
-            return obj.GetType().InvokeMember(
-                methodName,
-                BindingFlags.InvokeMethod,
-                null,
-                obj,
-                parameters);
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static void SetProperty(object obj, string propertyName, object value)
-    {
-        try
-        {
-            obj.GetType().InvokeMember(
-                propertyName,
-                BindingFlags.SetProperty,
-                null,
-                obj,
-                new object[] { value });
-        }
-        catch
-        {
-            // Ignore property set errors
-        }
-    }
-
-    private static object? GetProperty(object obj, string propertyName)
-    {
-        try
-        {
-            return obj.GetType().InvokeMember(
-                propertyName,
-                BindingFlags.GetProperty,
-                null,
-                obj,
-                null);
-        }
-        catch
-        {
-            return null;
-        }
-    }
+    private static object? Invoke(object target, string method, params object[] args) =>
+        target.GetType().InvokeMember(method, BindingFlags.InvokeMethod, null, target, args);
 }
