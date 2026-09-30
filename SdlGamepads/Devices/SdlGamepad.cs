@@ -8,6 +8,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using PtzJoystickControl.Application.Commands;
+using System.Diagnostics;
 
 namespace PtzJoystickControl.SdlGamepads.Devices;
 
@@ -181,7 +182,15 @@ public class SdlGamepad : IGamepad
 
     internal void OnButtonEvent(SDL.SDL_JoyButtonEvent jbutton)
     {
-        if (inputs.TryGetValue(string.Format(buttonNameFormatString, jbutton.button), out var input))
+        string inputId = string.Format(buttonNameFormatString, jbutton.button);
+        if (!inputs.TryGetValue(inputId, out var input))
+        {
+            Trace.WriteLine($"[{Name}] Button {inputId} state {jbutton.state}: no matching input");
+            return;
+        }
+
+        Trace.WriteLine($"[{Name}] Button {input.Id} ({input.Name}) state {jbutton.state}: command {input.SelectedCommand?.CommandName ?? "none"}, value {input.CommandValue?.Name ?? "none"}");
+
         {
             if (inputs.Any(x =>
                     x.Value.SelectedCommand is InputEnablerCommand && x.Value.CommandValue?.Name == input.Id))
@@ -194,7 +203,10 @@ public class SdlGamepad : IGamepad
                     bool enabled = inputEnablerCommand.EnabledInputs[input.Id];
 
                     if (!enabled)
+                    {
+                        Trace.WriteLine($"[{Name}] Button {input.Id} ignored: disabled by an Input Enabler");
                         return;
+                    }
                 }
             }
 
